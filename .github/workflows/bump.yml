@@ -25,6 +25,7 @@ jobs:
           permission-contents: write
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           token: ${{ steps.app-token.outputs.token }}
           ref: 'main'
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
@@ -67,6 +68,7 @@ jobs:
       - name: Checkout current repository
         uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           node-version: ${{ vars.DEFAULT_NODE_VERSION }}
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
       - name: Fetch full commit history (blobless)

@@ -21,6 +21,7 @@ jobs:
     steps:
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
       # OWASP runs in Docker and cannot see the runner's pnpm install. Put the
       # standalone pnpm 11 bundle in the mounted workspace instead.

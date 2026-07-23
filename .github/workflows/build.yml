@@ -22,6 +22,7 @@ jobs:
     steps:
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           node-version: ${{ matrix.node-version }}
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
       # type-check can run in parallel to unit tests
@@ -51,6 +52,7 @@ jobs:
     steps:
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
       - name: Enforce generated code is up to date
         shell: bash
@@ -94,5 +96,6 @@ jobs:
     steps:
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           registry-url: 'https://registry.npmjs.org'
           skip-build: 'true'

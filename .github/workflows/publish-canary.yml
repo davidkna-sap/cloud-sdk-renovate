@@ -22,6 +22,7 @@ jobs:
     steps:
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           node-version: 24 # Will install npm 11 needed for trusted publishing
           pnpm-install-args: ''
           package-manager-cache: false

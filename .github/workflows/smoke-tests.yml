@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           node-version: '24'
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
       - name: Update smoke test dependencies

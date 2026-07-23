@@ -21,6 +21,7 @@ jobs:
           permission-contents: write
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
+          pnpm-version: ''
           ref: ${{ github.head_ref }}
           registry-token: ${{ secrets.NPM_TOKEN_ARTIFACTORY }}
           persist-credentials: true
