@@ -35,10 +35,15 @@
     "sample-code": "pnpm -F=@sap-ai-sdk/sample-code run",
     "sample-cap": "pnpm -F=@sap-ai-sdk/sample-cap run",
     "check:deps": "pnpm -r -F !. -F !./tests/smoke-tests -F !./sample-cap exec depcheck --ignores=\"nock,@jest/globals\" --quiet",
-    "version-packages": "changeset version && tsx scripts/merge-changeset-changelogs.ts"
+    "version-packages": "tsx scripts/merge-changeset-changelogs.ts && changeset version"
   },
   "devDependencies": {
+    "@changesets/assemble-release-plan": "7.0.0-next.8",
     "@changesets/cli": "3.0.0-next.9",
+    "@changesets/config": "4.0.0-next.7",
+    "@changesets/read": "1.0.0-next.8",
+    "@changesets/types": "7.0.0-next.7",
+    "@manypkg/get-packages": "3.1.0",
     "@jest/globals": "^30.4.1",
     "@sap-ai-sdk/ai-api": "workspace:^",
     "@sap-ai-sdk/core": "workspace:^",

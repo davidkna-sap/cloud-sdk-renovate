@@ -207,12 +207,27 @@ importers:
 
   .:
     devDependencies:
+      '@changesets/assemble-release-plan':
+        specifier: 7.0.0-next.8
+        version: 7.0.0-next.8
       '@changesets/cli':
         specifier: 3.0.0-next.9
         version: 3.0.0-next.9
+      '@changesets/config':
+        specifier: 4.0.0-next.7
+        version: 4.0.0-next.7
+      '@changesets/read':
+        specifier: 1.0.0-next.8
+        version: 1.0.0-next.8
+      '@changesets/types':
+        specifier: 7.0.0-next.7
+        version: 7.0.0-next.7
       '@jest/globals':
         specifier: ^30.4.1
         version: 30.4.1(supports-color@8.1.1)
+      '@manypkg/get-packages':
+        specifier: 3.1.0
+        version: 3.1.0
       '@sap-ai-sdk/ai-api':
         specifier: workspace:^
         version: link:packages/ai-api

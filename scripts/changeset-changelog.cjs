@@ -47,7 +47,13 @@ function parseSummary(summary) {
 async function getReleaseLine(changeset) {
   const { category, text } = parseSummary(changeset.summary);
 
-  return `- ${changeset.commit}: [${category}] ${text}`;
+  if (!changeset.commit) {
+    throw new Error(
+      'Changesets could not resolve a commit for this changeset. Fetch full git history before running `changeset version`.'
+    );
+  }
+
+  return `- ${changeset.commit.slice(0, 7)}: [${category}] ${text}`;
 }
 
 async function getDependencyReleaseLine(changesets, dependenciesUpdated) {

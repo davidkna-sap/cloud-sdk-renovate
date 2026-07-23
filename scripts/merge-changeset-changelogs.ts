@@ -1,5 +1,12 @@
-import { readdir, readFile, writeFile } from 'fs/promises';
+import { assembleReleasePlan } from '@changesets/assemble-release-plan';
+import { readConfig } from '@changesets/config';
+import { readChangesets } from '@changesets/read';
+import type { NewChangeset, ReleasePlan } from '@changesets/types';
+import { getPackages } from '@manypkg/get-packages';
+import { execFile } from 'child_process';
+import { readFile, writeFile } from 'fs/promises';
 import path from 'path';
+import { promisify } from 'util';
 
 type Category =
   'Compatibility Notes' | 'New Features' | 'Fixed Issues' | 'Improvements';
@@ -26,134 +33,128 @@ const CATEGORY_BY_TAG: Record<string, Category> = {
 };
 
 const NEXT_VERSION_HEADING = /^# \d+\.\d+\.\d+$/m;
+const SUMMARY_CATEGORY = /^\[([^\]]+)\]\s+([\s\S]*)$/;
+const execFileAsync = promisify(execFile);
 
-async function getPackageNames(): Promise<string[]> {
-  const packagesDir = 'packages';
-  const entries = await readdir(packagesDir, { withFileTypes: true });
-  const packageNames = await Promise.all(
-    entries
-      .filter(entry => entry.isDirectory())
-      .map(async entry => {
-        const packageJsonPath = path.join(
-          packagesDir,
-          entry.name,
-          'package.json'
-        );
-        const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'));
-        return packageJson.name as string;
-      })
-  );
+function getCurrentRootVersion(rootChangelog: string): string {
+  const match = rootChangelog.match(NEXT_VERSION_HEADING);
 
-  return packageNames.sort();
-}
-
-function getVersionSection(
-  changelog: string,
-  version: string
-): string | undefined {
-  const versionHeading = `## ${version}`;
-  const start = changelog.indexOf(versionHeading);
-
-  if (start === -1) {
-    return undefined;
-  }
-
-  const sectionStart = start + versionHeading.length;
-  const nextVersionStart = changelog.slice(sectionStart).search(/^## \d/m);
-
-  if (nextVersionStart === -1) {
-    return changelog.slice(sectionStart);
-  }
-
-  return changelog.slice(sectionStart, sectionStart + nextVersionStart);
-}
-
-function getBullets(section: string): string[] {
-  const bullets: string[] = [];
-  let currentBullet: string[] = [];
-
-  for (const line of section.split('\n')) {
-    if (line.startsWith('- ')) {
-      if (currentBullet.length) {
-        bullets.push(currentBullet.join('\n'));
-      }
-      currentBullet = [line];
-      continue;
-    }
-
-    if (currentBullet.length && !line.startsWith('### ')) {
-      currentBullet.push(line);
-    }
-  }
-
-  if (currentBullet.length) {
-    bullets.push(currentBullet.join('\n'));
-  }
-
-  return bullets;
-}
-
-function parseBullet(
-  packageName: string,
-  bullet: string
-): ChangelogEntry | undefined {
-  if (bullet.startsWith('- Updated dependencies')) {
-    return undefined;
-  }
-
-  const match = bullet.match(/^- ([0-9a-f]{7,40}): \[([^\]]+)\] (.*)$/s);
   if (!match) {
-    return undefined;
+    throw new Error('Could not find the current version in CHANGELOG.md.');
   }
 
-  const [, hash, tag, text] = match;
-  const category = CATEGORY_BY_TAG[tag.toLowerCase()];
+  return match[0].replace('# ', '');
+}
+
+function parseSummary(
+  summary: string
+): Pick<ChangelogEntry, 'category' | 'text'> {
+  const match = summary.match(SUMMARY_CATEGORY);
+
+  if (!match) {
+    throw new Error(
+      `Changeset summary must start with one of [compat], [feat], [fix] or [improvement]: ${summary}`
+    );
+  }
+
+  const category = CATEGORY_BY_TAG[match[1].toLowerCase()];
 
   if (!category) {
-    return undefined;
+    throw new Error(
+      `Unsupported changeset category [${match[1]}]. Use [compat], [feat], [fix] or [improvement].`
+    );
   }
 
   return {
     category,
-    hash,
-    packages: new Set([packageName.replace('@sap-ai-sdk/', '')]),
-    text: text.trimEnd()
+    text: match[2].trim()
   };
 }
 
-async function collectEntries(version: string): Promise<ChangelogEntry[]> {
-  const packageNames = await getPackageNames();
+async function getChangesetCommit(changesetId: string): Promise<string> {
+  const { stdout } = await execFileAsync('git', [
+    'log',
+    '-n',
+    '1',
+    '--format=%h',
+    '--',
+    path.join('.changeset', `${changesetId}.md`)
+  ]);
+  const hash = stdout.trim();
+
+  if (!hash) {
+    throw new Error(
+      `Could not resolve a commit for changeset: ${changesetId}. Fetch full git history before running this script.`
+    );
+  }
+
+  return hash;
+}
+
+async function collectEntries(
+  changesets: NewChangeset[]
+): Promise<ChangelogEntry[]> {
   const entriesByKey = new Map<string, ChangelogEntry>();
 
-  for (const packageName of packageNames) {
-    const packageDir = packageName.replace('@sap-ai-sdk/', '');
-    const changelogPath = path.join('packages', packageDir, 'CHANGELOG.md');
-    const changelog = await readFile(changelogPath, 'utf8');
-    const section = getVersionSection(changelog, version);
+  for (const changeset of changesets) {
+    const { category, text } = parseSummary(changeset.summary);
+    const hash = await getChangesetCommit(changeset.id);
+    const packages = new Set(
+      changeset.releases.map(release =>
+        release.name.replace('@sap-ai-sdk/', '')
+      )
+    );
+    const key = `${category}\0${hash}\0${text}`;
+    const existingEntry = entriesByKey.get(key);
 
-    if (!section) {
-      continue;
-    }
-
-    for (const bullet of getBullets(section)) {
-      const entry = parseBullet(packageName, bullet);
-
-      if (!entry) {
-        continue;
+    if (existingEntry) {
+      for (const packageName of packages) {
+        existingEntry.packages.add(packageName);
       }
-
-      const key = `${entry.category}\0${entry.hash}\0${entry.text}`;
-      const existingEntry = entriesByKey.get(key);
-
-      if (existingEntry) {
-        existingEntry.packages.add([...entry.packages][0]);
-      } else {
-        entriesByKey.set(key, entry);
-      }
+    } else {
+      entriesByKey.set(key, { category, hash, packages, text });
     }
   }
 
   return [...entriesByKey.values()];
+}
+
+async function getReleasePlan(): Promise<ReleasePlan> {
+  const packages = await getPackages(process.cwd());
+  const configResult = await readConfig(process.cwd(), packages);
+
+  if (configResult.errors) {
+    throw new Error(configResult.errors.join('\n'));
+  }
+
+  const changesets = await readChangesets(process.cwd());
+
+  return assembleReleasePlan(
+    changesets,
+    packages,
+    configResult.config,
+    undefined
+  );
+}
+
+function getNextRootVersion(
+  rootChangelog: string,
+  releasePlan: ReleasePlan
+): string {
+  const currentRootVersion = getCurrentRootVersion(rootChangelog);
+  const releaseVersions = releasePlan.releases
+    .map(release => release.newVersion)
+    .filter(version => version !== currentRootVersion);
+
+  if (!releaseVersions.length) {
+    throw new Error('Could not find a new package version for CHANGELOG.md.');
+  }
+
+  return releaseVersions.sort((a, b) =>
+    b.localeCompare(a, undefined, {
+      numeric: true
+    })
+  )[0];
 }
 
 function formatEntry(entry: ChangelogEntry): string {
@@ -210,15 +211,20 @@ function insertRootChangelogEntry(
 }
 
 async function mergeChangesetChangelogs(): Promise<void> {
-  const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
-  const version = packageJson.version as string;
-  const entries = await collectEntries(version);
+  const releasePlan = await getReleasePlan();
+
+  if (!releasePlan.changesets.length) {
+    return;
+  }
+
+  const rootChangelog = await readFile('CHANGELOG.md', 'utf8');
+  const version = getNextRootVersion(rootChangelog, releasePlan);
+  const entries = await collectEntries(releasePlan.changesets);
 
   if (!entries.length) {
     throw new Error(`Could not find changelog entries for version ${version}.`);
   }
 
-  const rootChangelog = await readFile('CHANGELOG.md', 'utf8');
   const updatedRootChangelog = insertRootChangelogEntry(
     rootChangelog,
     version,
