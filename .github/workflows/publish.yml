@@ -36,7 +36,7 @@ jobs:
           package-manager-cache: false
           registry-url: 'https://registry.npmjs.org'
           token: ${{ github.token }}
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Fetch full git history
         run: git fetch --filter=blob:none --tags --unshallow || git fetch --filter=blob:none --tags
