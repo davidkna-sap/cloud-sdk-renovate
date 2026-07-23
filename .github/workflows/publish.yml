@@ -49,7 +49,6 @@ jobs:
           version-script: pnpm version-packages
           commit-message: 'chore: version packages'
           pr-title: 'chore: version packages'
-          commit-mode: github-api
           github-token: ${{ github.token }}
 
   delegate_to_canary_job:
