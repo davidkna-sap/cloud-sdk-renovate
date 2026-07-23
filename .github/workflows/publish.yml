@@ -29,22 +29,13 @@ jobs:
       id-token: write
       pull-requests: write
     steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ secrets.SAP_AI_SDK_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.SAP_AI_SDK_BOT_PRIVATE_KEY }}
-          permission-contents: write
-          permission-pull-requests: write
-
       - uses: sap/cloud-sdk-js/.github/actions/setup@main
         with:
           pnpm-version: ''
           node-version: 24 # Will install npm 11 needed for trusted publishing
           package-manager-cache: false
           registry-url: 'https://registry.npmjs.org'
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ github.token }}
           persist-credentials: true
 
       - name: Create Release Pull Request or Publish to npm
@@ -56,7 +47,7 @@ jobs:
           commit-message: 'chore: version packages'
           pr-title: 'chore: version packages'
           commit-mode: github-api
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ github.token }}
 
   delegate_to_canary_job:
     if: ${{ github.event_name != 'push' }}
