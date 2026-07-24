@@ -3,7 +3,7 @@
     "extends": [
         "config:best-practices",
         "security:openssf-scorecard",
-        ":semanticCommitType(chore)",
+        ":semanticCommitTypeAll(chore)",
         ":pinOnlyDevDependencies",
         ":enableVulnerabilityAlerts", // Handle vulnerability alerts from dependabot
         ":automergeMinor",
