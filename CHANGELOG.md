@@ -28,6 +28,11 @@
 
 -
 
+# 2.13.1
+## Fixed Issues
+
+- [openai] Fix OpenAI client types to allow passing objects with model deployment details (model name + model version, deployment ID and/or resource group) instead of just model names. (016edcd)
+
 # 2.13.0
 ## New Features
 
